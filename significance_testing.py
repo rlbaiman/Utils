@@ -1,24 +1,8 @@
-def AR_significance(AR_data, sig):
-    """
-    
-    """
-    #convert into numpy ndarray arrays
-    arr_1 = AR_data[variable].values
-    arr_2 = Analog_data[variable].values
-    #Get coordinates from the original xarray
-    lat  = Analog_data.coords['lat']
-    lon = AR_data.coords['lon']
-
-    t_stat, p_values = stats.ttest_ind(arr_1, arr_2, equal_var = False, nan_policy= 'omit')
-    t_stat[t_stat>0] = 1
-    t_stat[t_stat<0] = -1
-    t_stat[p_values>sig]=0
-    
-    t_stat_xr = xr.DataArray(t_stat, coords = [lat, lon], dims = ['lat', 'lon'], name='t_stats')
-    return(t_stat_xr)
+import numpy as np
+import xarray as xr
 
 ####
-# Significance of topAR from bootstrap method
+# Significance testing on composite data using the bootstrap method
 ####
 def bootstrap(climo_data, composite_data, composite_n, variable_name, sig = .01 , tail = "both" , bootstrap_n = 1000):
     """
@@ -53,31 +37,31 @@ def bootstrap(climo_data, composite_data, composite_n, variable_name, sig = .01 
         Includes one variable "sig_stat"
         
     """
-    composite_data = composite_data[variable]
-    climo_data = climo_data[variable]
+    composite_data = composite_data[variable_name]
+    climo_data = climo_data[variable_name]
     
     climo_dims = np.array(climo_data.dims)
     climo_dims = climo_dims[climo_dims != "time"]
     composite_dims = np.array(composite_data.dims)
     composite_dims = composite_dims[composite_dims != "time"]
     
-    if climo_dims != composite_dims:
+    if np.all(composite_dims != climo_dims[climo_dims != "time"]):
         print("Dimensions of climo_data and composite_data are not identical.")
-    if climo_dims != composite_dims:
-        print("Dimensions of climo_data and composite_data are not identical.")
-    if np.array(climo_data["lon"]) != np.array(composite_data["lon"]):
+
+    if np.all(np.array(climo_data["lon"]) != np.array(composite_data["lon"])):
         print("Longitudes in climo_data and composite_data are not identical.")
-    if np.array(climo_data["lat"]) != np.array(composite_data["lat"]):
+    if np.all(np.array(climo_data["lat"]) != np.array(composite_data["lat"])):
         print("Latitudes in climo_data and composite_data are not identical.")
         
         
     list = []
-    for i in range(n):
-        sample_mean = ar_data.sel(time = np.random.choice(climo_data.time, size = composite_n, replace = True)).mean(dim = 'time').load()
+    for i in range(bootstrap_n):
+        sample_mean = climo_data.isel(time = np.random.choice(np.arange(len(climo_data.time)), size = composite_n, replace = True))
+        sample_mean = sample_mean.mean(dim = 'time').load()
         
         list.append(xr.DataArray(sample_mean, dims = ['lat','lon'], 
-                             coords = dict(lon=, np.array(climo_data["lon"])
-                                           lat = np.array(climo_data["lat"]), 
+                             coords = dict(lat = np.array(climo_data["lat"]), 
+                                           lon= np.array(climo_data["lon"]),
                                            sample = i 
                                           )))
     sampled_xr = xr.concat(list, dim = 'sample')
@@ -85,10 +69,11 @@ def bootstrap(climo_data, composite_data, composite_n, variable_name, sig = .01 
     top_cutoff = np.array(sampled_xr.quantile(sig, dim = 'sample'))
     bottom_cutoff = np.array(sampled_xr.quantile(1-sig, dim = 'sample'))
 
-    composite_sig = np.zeros(np.shape(np.array(composite_data)))
+    composite_sig = np.zeros((len(composite_data.lat), len(composite_data.lon)))
 
     composite_sig[composite_data>top_cutoff]=1
-    composite_sig[lcomposite_data<bottom_cutoff]=-1
+    composite_sig[composite_data<bottom_cutoff]=-1
     
-    sig_xr = xr.DataArray(composite_sig, dims = ['lat','lon'], coords = dict(lon=np.array(climo_data["lon"]), lat = np.array(climo_data["lon"]), name = 'sig_stat')
-    return(sig_xr )
+    sig_xr = xr.DataArray(composite_sig, dims = ['lat','lon'], coords = dict(lat=np.array(climo_data["lat"]), lon = np.array(climo_data["lon"]), name = 'sig_stat'))
+
+    return(sig_xr)
