@@ -24,6 +24,7 @@ def bootstrap(climo_data, composite_data, composite_n, variable_name, sig = .01 
     """
     Find spatial significance with bootstrapping
 
+
     Parameters
     ----------
     climo_data : xarray
