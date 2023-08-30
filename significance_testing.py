@@ -66,14 +66,14 @@ def bootstrap(climo_data, composite_data, composite_n, variable_name, sig = .01 
                                           )))
     sampled_xr = xr.concat(list, dim = 'sample')
     
-    top_cutoff = np.array(sampled_xr.quantile(sig, dim = 'sample'))
-    bottom_cutoff = np.array(sampled_xr.quantile(1-sig, dim = 'sample'))
+    top_cutoff = np.array(sampled_xr.quantile(1-sig, dim = 'sample'))
+    bottom_cutoff = np.array(sampled_xr.quantile(sig, dim = 'sample'))
 
     composite_sig = np.zeros((len(composite_data.lat), len(composite_data.lon)))
 
     composite_sig[composite_data>top_cutoff]=1
     composite_sig[composite_data<bottom_cutoff]=-1
     
-    sig_xr = xr.DataArray(composite_sig, dims = ['lat','lon'], coords = dict(lat=np.array(climo_data["lat"]), lon = np.array(climo_data["lon"]), name = 'sig_stat'))
+    sig_xr = xr.DataArray(composite_sig, dims = ['lat','lon'], coords = dict(lat=np.array(climo_data["lat"]), lon = np.array(climo_data["lon"])))
 
     return(sig_xr)
